@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 from scipy.integrate import simpson
+import json
 
 MODEL_PDFS = {
     "norm": stats.norm,
@@ -48,6 +49,7 @@ def get_regression_score(pdf_type, pdf_args, true_target):
         score /= area
     y_max = float(np.max(y))
     if y_max > 1:
+        y = y / y_max   
         score /= y_max
 
     return float(score)
@@ -73,7 +75,7 @@ def get_classification_score(true_label, pred_label, confidence):
 def get_challange_score(regression_score,classification_score):
     return (regression_score+classification_score)/2
 
-
+"""
 def get_regression_score_target(pdf_type, pdf_args, true_target, sample):
 
     model = MODEL_PDFS[pdf_type]
@@ -95,3 +97,29 @@ def get_regression_score_target(pdf_type, pdf_args, true_target, sample):
     probs = score / densities.sum()
 
     return float(probs)
+"""
+
+
+def create_submission_json(predictions, output_path=None):
+    """
+    predictions: lista di dizionari con chiavi:
+        - class: 0 o 1
+        - class_conf: float tra 0 e 1
+        - pdf_type: string (es. "norm", "cauchy")
+        - pdf_args: dict (es. {"loc": -1, "scale": 0.1})
+    """
+    submission = {}
+
+    for i, pred in enumerate(predictions):
+        submission[str(i)] = {
+            "class": pred["class"],
+            "class_conf": pred["class_conf"],
+            "pdf_type": pred["pdf_type"],
+            "pdf_args": pred["pdf_args"]
+        }
+
+    if output_path:
+        with open(output_path, "w") as f:
+            json.dump(submission, f, indent=4)
+
+    return submission
