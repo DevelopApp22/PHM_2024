@@ -1,0 +1,7 @@
+train_dataset*
+.venv/
+*.pkl
+*.csv
+.DS_Store
+*.pyc
+*.pyo
