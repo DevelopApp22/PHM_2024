@@ -120,14 +120,25 @@ class GPRModel:
     def evaluate(self, X, y):
         y = np.asarray(y).ravel()
 
-        y_pred = self.predict(X, return_std=False)
-        rmse = float(np.sqrt(mean_squared_error(y, y_pred)))
-        mae = float(mean_absolute_error(y, y_pred))
-        r2 = float(r2_score(y, y_pred))
+        y_pred, y_std = self.predict(X, return_std=True)
+        y_pred = np.asarray(y_pred).ravel()
+        y_std  = np.asarray(y_std).ravel()
 
-        out = {
-            f"rmse": rmse,
-            f"mae": mae,
-            f"r2": r2
+        rmse = float(np.sqrt(mean_squared_error(y, y_pred)))
+        mae  = float(mean_absolute_error(y, y_pred))
+        r2   = float(r2_score(y, y_pred))
+
+        # Calibrazione: coverage agli intervalli 90%, 95%, 99%
+        coverage = {}
+        for level, z in [(0.90, 1.645), (0.95, 1.960), (0.99, 2.576)]:
+            lower = y_pred - z * y_std
+            upper = y_pred + z * y_std
+            cov = float(np.mean((y >= lower) & (y <= upper)))
+            coverage[f"coverage_{int(level*100)}"] = cov
+
+        return {
+            "rmse": rmse,
+            "mae":  mae,
+            "r2":   r2,
+            **coverage
         }
-        return out

@@ -154,29 +154,42 @@ class RandomForestRegressorModel:
 
     def evaluate(self, X, y, set_name="set", verbose=True):
         """
-        Valuta il modello come regressore "puntuale" (predice un numero).
-        Metriche: MAE, RMSE, R2.
+        Valuta il modello come regressore "puntuale" e probabilistico.
+        Metriche: MAE, RMSE, R2 e Coverage (90%, 95%, 99%).
         """
         self._check_fitted()
+        y = np.asarray(y).ravel()
 
         y_pred = self.predict_mean(X)
+        y_pred = np.asarray(y_pred).ravel()
+
+        tree_preds = np.array([tree.predict(X) for tree in self.model.estimators_])
+        y_std = np.std(tree_preds, axis=0)
 
         mae = mean_absolute_error(y, y_pred)
         mse = mean_squared_error(y, y_pred)
         rmse = float(np.sqrt(mse))
-
         r2 = r2_score(y, y_pred)
-
         metrics = {
             f"{set_name}_MAE": mae,
             f"{set_name}_RMSE": rmse,
             f"{set_name}_R2": r2,
         }
 
+        for level, z in [(0.90, 1.645), (0.95, 1.960), (0.99, 2.576)]:
+            lower = y_pred - z * y_std
+            upper = y_pred + z * y_std
+            cov = float(np.mean((y >= lower) & (y <= upper)))
+            metrics[f"{set_name}_coverage_{int(level*100)}"] = cov
+
+
         if verbose:
             print(f"\nMetrics on {set_name}")
-            print(f"MAE  : {mae:.6f}")
-            print(f"RMSE : {rmse:.6f}")
-            print(f"R²   : {r2:.6f}")
+            print(f"MAE   : {mae:.6f}")
+            print(f"RMSE  : {rmse:.6f}")
+            print(f"R²    : {r2:.6f}")
+            print(f"Cov90 : {metrics[f'{set_name}_coverage_90']:.4f}")
+            print(f"Cov95 : {metrics[f'{set_name}_coverage_95']:.4f}")
+            print(f"Cov99 : {metrics[f'{set_name}_coverage_99']:.4f}")
 
         return metrics
